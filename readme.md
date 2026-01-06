@@ -367,5 +367,5 @@ Example document in `search_logs`:
 
 This project fulfills all requirements mentioned in the assignment guidelines and is ready for evaluation.
 
-```
+
 
