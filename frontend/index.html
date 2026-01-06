@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRCTC Dashboard</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f4f7f9;
+            font-family: 'Inter', sans-serif;
+        }
+        .navbar-irctc {
+            background-color: #213d77;
+        }
+        .navbar-brand {
+            color: #fff !important;
+            font-weight: 600;
+        }
+        .card {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+        .btn-irctc {
+            background-color: #213d77;
+            color: white;
+            font-weight: 600;
+            border: none;
+        }
+        .btn-irctc:hover {
+            background-color: #1a305e;
+        }
+        .seat-input {
+            width: 70px;
+        }
+    </style>
+</head>
+
+<body>
+
+
+<script>
+if (!localStorage.getItem("access")) {
+    window.location.href = "login.html";
+}
+</script>
+
+
+<nav class="navbar navbar-irctc px-3">
+    <span class="navbar-brand">IRCTC Mini System</span>
+    <div>
+        <a href="./booking.html" class="btn btn-light btn-sm me-2">My booking</a>
+        <button class="btn btn-light btn-sm" onclick="logout()">Logout</button>
+    </div>
+</nav>
+
+<div class="container my-5">
+
+    <!-- SEARCH -->
+    <div class="card p-4 mb-4">
+        <h5 class="fw-bold mb-3">Search Trains</h5>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <input id="trainNumber" class="form-control" placeholder="Train Number (optional)">
+            </div>
+            <div class="col-md-4">
+                <input id="source" class="form-control" placeholder="Source (DEL)">
+            </div>
+            <div class="col-md-4">
+                <input id="destination" class="form-control" placeholder="Destination (BPL)">
+            </div>
+        </div>
+     
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <input id="journeyDate" type="date" class="form-control">
+    </div>
+</div>
+
+        <div class="d-grid">
+            <button class="btn btn-irctc" onclick="searchTrains()">Search</button>
+        </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="card p-4">
+        <h5 class="fw-bold mb-3">Available Trains</h5>
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Train</th>
+                        <th>Route</th>
+                        <th>Time</th>
+                        <th>Seat Status</th>
+                        <th>Class</th>
+                        <th>Booking</th>
+                    </tr>
+                </thead>
+                <tbody id="trainResults">
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">
+                            Search for trains to see results
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+if (!localStorage.getItem("access")) {
+    window.location.href = "login.html";
+}
+
+// LOGOUT 
+function logout() {
+    localStorage.clear();
+    window.location.href = "login.html";
+}
+
+// Search Trains
+async function searchTrains() {
+    const trainNumber = document.getElementById("trainNumber").value.trim();
+    const source = document.getElementById("source").value.trim();
+    const destination = document.getElementById("destination").value.trim();
+    const journeyDate = document.getElementById("journeyDate").value;
+
+    const tbody = document.getElementById("trainResults");
+
+    if (!journeyDate) {
+        alert("Please select journey date");
+        return;
+    }
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" class="text-center text-muted">Searching...</td>
+        </tr>
+    `;
+
+    let url = "http://127.0.0.1:8000/api/trains/search/?";
+
+    if (trainNumber) {
+        url += `train_number=${encodeURIComponent(trainNumber)}&date=${journeyDate}`;
+    } else if (source && destination) {
+        url += `source=${encodeURIComponent(source)}&destination=${encodeURIComponent(destination)}&date=${journeyDate}`;
+    } else {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-danger">
+                    Enter Train Number OR Source & Destination
+                </td>
+            </tr>`;
+        return;
+    }
+
+    try {
+        const response = await fetch(url);
+
+        if (response.status === 401) {
+            alert("Session expired. Please login again.");
+            logout();
+            return;
+        }
+
+        const data = await response.json();
+        tbody.innerHTML = "";
+
+        if (!Array.isArray(data) || data.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted">
+                        No trains found
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        data.forEach(train => {
+            const totalAvailable =
+                train.available_sl_seats +
+                train.available_ac3_seats +
+                train.available_ac2_seats +
+                train.available_ac1_seats;
+
+            const statusBadge = totalAvailable > 0
+                ? `<span class="badge bg-success">Available</span>`
+                : `<span class="badge bg-danger">Not Available</span>`;
+
+            const classSelector = totalAvailable > 0
+                ? `
+                    <select class="form-select form-select-sm" id="class-${train.id}">
+                        <option value="SL">SL</option>
+                        <option value="3A">3A</option>
+                        <option value="2A">2A</option>
+                        <option value="1A">1A</option>
+                    </select>`
+                : `<span class="text-muted">—</span>`;
+
+            const bookingUI = totalAvailable > 0
+                ? `
+                    <div class="d-flex gap-2">
+                        <input type="number"
+                               min="1"
+                               class="form-control form-control-sm seat-input"
+                               id="seat-${train.id}"
+                               placeholder="Seats">
+                        <button class="btn btn-sm btn-irctc"
+                                onclick="bookTrain(${train.id})">
+                            Book
+                        </button>
+                    </div>`
+                : `<span class="text-muted">Booking Closed</span>`;
+
+            tbody.innerHTML += `
+            <tr>
+                <td>${train.train_number} - ${train.train_name}</td>
+                <td>${train.source} → ${train.destination}</td>
+                <td>${train.departure_time} - ${train.arrival_time}</td>
+                <td>
+                    SL: ${train.available_sl_seats}<br>
+                    3A: ${train.available_ac3_seats}<br>
+                    2A: ${train.available_ac2_seats}<br>
+                    1A: ${train.available_ac1_seats}<br>
+                    ${statusBadge}
+                </td>
+                <td>${classSelector}</td>
+                <td>${bookingUI}</td>
+            </tr>`;
+        });
+
+    } catch (error) {
+        console.error(error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-danger">
+                    Network error. Please try again.
+                </td>
+            </tr>`;
+    }
+}
+
+// Book Train
+async function bookTrain(trainId) {
+    const seats = document.getElementById(`seat-${trainId}`).value;
+    const seatType = document.getElementById(`class-${trainId}`).value;
+    const journeyDate = document.getElementById("journeyDate").value;
+    const token = localStorage.getItem("access");
+
+    if (!token) {
+        alert("Session expired. Please login again.");
+        logout();
+        return;
+    }
+
+    if (!journeyDate) {
+        alert("Please select journey date");
+        return;
+    }
+
+    if (!seats || seats <= 0) {
+        alert("Enter valid seat count");
+        return;
+    }
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/bookings/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                train: trainId,
+                journey_date: journeyDate,
+                seats_booked: seats,
+                seat_type: seatType
+            })
+        });
+
+        if (response.status === 401) {
+            alert("Session expired. Please login again.");
+            logout();
+            return;
+        }
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert("Booking successful!");
+            searchTrains(); 
+        } else {
+            alert(data.error || "Booking failed");
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert("Network error during booking");
+    }
+}
+</script>
+
+</body>
+</html>
