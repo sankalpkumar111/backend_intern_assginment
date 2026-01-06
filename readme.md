@@ -1,10 +1,10 @@
-```
+
 # IRCTC Mini Backend System
 
 A simplified IRCTC-style backend system developed as part of a Backend Intern assignment.  
 The project demonstrates clean API design, proper database modeling, JWT-based authentication, transactional booking logic, and analytics using MongoDB.
 
----
+
 
 ## 📌 Objective
 
@@ -15,7 +15,6 @@ To build a backend system that supports:
 - Booking with seat validation
 - Analytics logging using MongoDB
 
----
 
 ## 🛠 Tech Stack
 
@@ -35,7 +34,7 @@ To build a backend system that supports:
 - Bootstrap
 - JavaScript
 
----
+
 
 ## 📂 Project Structure
 
